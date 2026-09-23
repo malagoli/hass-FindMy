@@ -108,7 +108,7 @@ class _FindMyBaseSensor[T](
     def device_info(self) -> DeviceInfo:
         return build_device_info(self._device)
 
-    @cached_property
+    @property
     @override
     def available(self) -> bool:
         return self._attr_available
@@ -135,7 +135,7 @@ class FindMyLatitudeSensor(_FindMyBaseSensor[float]):
         report = latest_report(self._coordinator, self._device)
         return report.latitude if report else None
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> float | None:
         val = self._cached_value
@@ -156,7 +156,7 @@ class FindMyLongitudeSensor(_FindMyBaseSensor[float]):
         report = latest_report(self._coordinator, self._device)
         return report.longitude if report else None
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> float | None:
         val = self._cached_value
@@ -180,7 +180,7 @@ class FindMyPositionSensor(_FindMyBaseSensor[str]):
             return None
         return f"{report.latitude:.6f},{report.longitude:.6f}"
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> str | None:
         val = self._cached_value
@@ -200,7 +200,7 @@ class FindMyBatteryLevelSensor(_FindMyBaseSensor[str]):
         report = latest_report(self._coordinator, self._device)
         return battery_label(report.status if report else None)
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> str | None:
         val = self._cached_value
@@ -221,7 +221,7 @@ class FindMyBatteryPercentSensor(_FindMyBaseSensor[int]):
         report = latest_report(self._coordinator, self._device)
         return battery_percent(report.status if report else None)
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> int | None:
         val = self._cached_value
@@ -243,7 +243,7 @@ class FindMyBatteryVoltageSensor(_FindMyBaseSensor[int]):
         report = latest_report(self._coordinator, self._device)
         return battery_voltage_mv(report.status if report else None)
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> int | None:
         val = self._cached_value
@@ -263,7 +263,7 @@ class FindMyStatusCounterSensor(_FindMyBaseSensor[int]):
         report = latest_report(self._coordinator, self._device)
         return status_counter(report.status if report else None)
 
-    @cached_property
+    @property
     @override
     def native_value(self) -> int | None:
         val = self._cached_value
