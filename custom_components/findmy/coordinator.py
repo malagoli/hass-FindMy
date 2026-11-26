@@ -15,6 +15,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from findmy import (
     FindMyAccessory,
     FixedRollingKeyPairAccessory,
+    InvalidCredentialsError,
     InvalidStateError,
     KeyPair,
     LocationReport,
@@ -214,10 +215,10 @@ class FindMyCoordinator(DataUpdateCoordinator[FindMyLocationData | None]):
             success = True
 
             device_reports = await account.fetch_location(devices)
-        except UnauthorizedError as err:
+        except (UnauthorizedError, InvalidCredentialsError) as err:
             success = False
 
-            _LOGGER.exception("Unauthorized... :c")
+            _LOGGER.warning("Authentication failed (%s); re-authentication required", err)
 
             raise ConfigEntryAuthFailed from err
         except InvalidStateError as err:

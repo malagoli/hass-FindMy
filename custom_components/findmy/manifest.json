@@ -1,12 +1,14 @@
 {
   "domain": "findmy",
   "name": "FindMy",
-  "version": "v0.0.1",
+  "version": "v0.0.2-malagoli.1",
   "integration_type": "device",
   "iot_class": "cloud_polling",
   "config_flow": true,
   "dependencies": ["bluetooth"],
-  "documentation": "https://github.com/malmeloo/hass-findmy",
-  "issue_tracker": "https://github.com/malmeloo/hass-findmy/issues",
-  "requirements": ["FindMy==0.10.2"]
+  "documentation": "https://github.com/malagoli/hass-FindMy",
+  "issue_tracker": "https://github.com/malagoli/hass-FindMy/issues",
+  "requirements": [
+    "FindMy @ https://github.com/malagoli/FindMy.py/releases/download/v0.10.2.post2/findmy-0.10.2.post2-py3-none-any.whl"
+  ]
 }

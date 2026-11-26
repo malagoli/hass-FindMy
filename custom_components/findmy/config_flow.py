@@ -270,7 +270,8 @@ class InitialSetupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Attempt login
         try:
             await self._account.login(info["email"], info["password"])
-        except InvalidCredentialsError:
+        except InvalidCredentialsError as err:
+            _LOGGER.warning("Apple login failed: %s", err)
             return self.async_show_form(
                 step_id="acc_login",
                 data_schema=DATA_SCHEMA_ACC_LOGIN,
@@ -480,7 +481,8 @@ class InitialSetupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             await self._account.login(info["email"], info["password"])
-        except InvalidCredentialsError:
+        except InvalidCredentialsError as err:
+            _LOGGER.warning("Apple re-authentication failed: %s", err)
             return self.async_show_form(
                 step_id="reauth_confirm",
                 data_schema=self.add_suggested_values_to_schema(
