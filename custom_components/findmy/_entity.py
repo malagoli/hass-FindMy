@@ -5,18 +5,22 @@ attach to the same HASS "device" and remain in sync when the coordinator
 updates.
 """
 
+# pyright: reportImportCycles=false
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from findmy import FindMyAccessory, KeyPair
+from findmy import FindMyAccessory, FixedRollingKeyPairAccessory, KeyPair
 
 from .const import DOMAIN
 
 if TYPE_CHECKING:
-    from findmy import LocationReport
+    from homeassistant.core import HomeAssistant
+
+    from findmy import AsyncAppleAccount, LocationReport
 
     from .coordinator import FindMyCoordinator, FindMyDevice
 
@@ -27,7 +31,7 @@ def device_unique_id(device: FindMyDevice) -> str:
     if isinstance(device, KeyPair):
         return device.hashed_adv_key_b64
 
-    assert isinstance(device, FindMyAccessory)
+    assert isinstance(device, (FindMyAccessory, FixedRollingKeyPairAccessory))
     identifier = device.identifier
     if identifier is None:
         msg = "Device has no identifier"
@@ -37,6 +41,29 @@ def device_unique_id(device: FindMyDevice) -> str:
 
 def device_name(device: FindMyDevice) -> str:
     return device.name or "Unknown"
+
+
+def account_name(account: AsyncAppleAccount) -> str:
+    email = cast("str | None", account.account_name) or ""
+    fname = cast("str | None", account.first_name) or ""
+    lname = cast("str | None", account.last_name) or ""
+
+    return f"Apple: {fname} {lname} <{email}>".strip()
+
+
+def account_unique_id(account: AsyncAppleAccount) -> str:
+    """Stable identifier used for the device registry entry for an Apple account."""
+    email = cast("str | None", account.account_name) or ""
+
+    if not email:
+        msg = "Account has no email address to derive a unique ID from"
+        raise ValueError(msg)
+
+    return email
+
+
+def account_entity_id(account: AsyncAppleAccount) -> str:
+    return account_unique_id(account).split("@")[0]
 
 
 def build_device_info(device: FindMyDevice) -> DeviceInfo:
@@ -53,6 +80,23 @@ def latest_report(
     if not coordinator.data:
         return None
     return coordinator.data.get(device)
+
+
+def latest_status(
+    hass: HomeAssistant,
+    coordinator: FindMyCoordinator,
+    device: FindMyDevice,
+) -> int | None:
+    """Status byte from whichever is newer: the last location report or a local advertisement."""
+    from .storage import RuntimeStorage  # noqa: PLC0415  # circular import
+
+    report = latest_report(coordinator, device)
+    local = RuntimeStorage.get(hass).local_status.get(device_unique_id(device))
+    if local is None:
+        return report.status if report else None
+    if report is None or report.timestamp <= local[1]:
+        return local[0]
+    return report.status
 
 
 # --- Battery bits (Apple Find My payload byte 6, bits 6-7) ----------------

@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
 
+from findmy import AsyncAppleAccount
+
 from .const import CONFIG_FLOW_VERSION_MAJOR, CONFIG_FLOW_VERSION_MINOR
 from .coordinator import FindMyDevice
 from .services import async_register as _async_register_services
@@ -18,7 +20,10 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [
+ACCOUNT_PLATFORMS = [
+    Platform.SENSOR,
+]
+DEVICE_PLATFORMS = [
     Platform.DEVICE_TRACKER,
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
@@ -75,12 +80,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry[EntryData]) 
     storage = RuntimeStorage.get(hass)
 
     item = await storage.add_entry(entry)
-    if isinstance(item, FindMyDevice):
+
+    if isinstance(item, AsyncAppleAccount):
+        await hass.config_entries.async_forward_entry_setups(entry, ACCOUNT_PLATFORMS)
+    elif isinstance(item, FindMyDevice):  # pyright: ignore[reportUnnecessaryIsInstance]
         # only initialize device tracker entities for actual devices
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        await hass.config_entries.async_forward_entry_setups(entry, DEVICE_PLATFORMS)
+    else:
+        _LOGGER.warning(
+            "Could not determine platforms to load for entry %s; no entities will be created",
+            entry.entry_id,
+        )
 
     await storage.coordinator.reload()
-    await storage.coordinator.async_refresh()
+    # All entries share one coordinator. Delay the first refresh so multiple setup calls can
+    # settle, then coalesce them into one refresh instead of a startup storm.
+    storage.coordinator.schedule_refresh()
 
     return True
 
@@ -88,10 +103,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry[EntryData]) 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry[EntryData]) -> bool:
     _LOGGER.debug("Unloading FindMy entry: %s", entry.entry_id)
 
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if not unload_ok:
+    try:
+        item = await RuntimeStorage.get(hass).del_entry(entry)
+    except KeyError:
+        _LOGGER.warning(
+            "Entry %s not found in storage during unload",
+            entry.entry_id,
+        )
         return False
 
-    _ = await RuntimeStorage.get(hass).del_entry(entry)
+    if isinstance(item, AsyncAppleAccount):
+        _ = await hass.config_entries.async_unload_platforms(entry, ACCOUNT_PLATFORMS)
+    elif isinstance(item, FindMyDevice):  # pyright: ignore[reportUnnecessaryIsInstance]
+        _ = await hass.config_entries.async_unload_platforms(entry, DEVICE_PLATFORMS)
+    else:
+        _LOGGER.warning(
+            "Could not determine platforms to unload for entry %s",
+            entry.entry_id,
+        )
+        return False
 
     return True
